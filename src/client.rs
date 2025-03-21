@@ -11,14 +11,15 @@ async fn main() -> anyhow::Result<()> {
     let file_path = std::env::args().nth(1).expect("expected a path to a file");
     let file_length = std::fs::metadata(&file_path)?.len();
 
-    let api_paths = ["/put/v1", "/put/v2", "/put/v3"];
+    let api_paths = rust_upload_file_benchmark::routes::API_PATHS;
+    let dst_files = rust_upload_file_benchmark::routes::DST_FILES;
 
     let client = reqwest::Client::new();
 
     let max_rounds = 3;
     for round in 1..=max_rounds {
         println!("round {round}:");
-        for &api in &api_paths {
+        for &api in api_paths {
             let file = tokio::fs::File::open(&file_path).await?;
             let body = reqwest::Body::wrap_stream(FramedRead::new(file, BytesCodec::new()));
 
@@ -47,12 +48,6 @@ async fn main() -> anyhow::Result<()> {
         }
         println!("--------");
     }
-
-    let dst_files = [
-        "target/data/put_v1",
-        "target/data/put_v2",
-        "target/data/put_v3",
-    ];
 
     let sample_sha256 = sha256sum(&file_path)?;
     for dst_file in dst_files {
