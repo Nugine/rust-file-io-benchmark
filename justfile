@@ -4,12 +4,12 @@ dev:
 
 server:
     RUST_BACKTRACE=full \
-    RUST_LOG=server=debug \
+    RUST_LOG=rust_upload_file_benchmark=debug,server=debug \
     cargo run --release --bin server
 
 client:
     RUST_BACKTRACE=full \
-    RUST_LOG=client=debug \
+    RUST_LOG=rust_upload_file_benchmark=debug,client=debug \
     cargo run --release --bin client \
     -- target/sample.bin \
     | tee client.log

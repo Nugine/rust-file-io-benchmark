@@ -8,6 +8,7 @@ use axum::Router;
 use axum::body::Body;
 use axum::routing::put;
 use bytes::Bytes;
+use compio::io::AsyncWriteAtExt as _;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use tokio::io::AsyncWriteExt as _;
@@ -39,7 +40,7 @@ async fn put_v2(body: Body) -> Result<(), AppError> {
 
     let path = DST_FILES[1];
 
-    let (tx, mut rx) = mpsc::channel::<Bytes>(32);
+    let (tx, mut rx) = mpsc::channel::<Bytes>(DATA_CHAN_SIZE);
 
     let task = tokio::task::spawn_blocking(move || {
         debug!("fs start");
@@ -74,7 +75,7 @@ enum Operation {
     ),
 }
 
-static IO_URING: LazyLock<mpsc::Sender<Operation>> = LazyLock::new(|| {
+static TOKIO_URING: LazyLock<mpsc::Sender<Operation>> = LazyLock::new(|| {
     let (tx, mut rx) = mpsc::channel::<Operation>(32);
 
     std::thread::spawn(move || {
@@ -82,7 +83,7 @@ static IO_URING: LazyLock<mpsc::Sender<Operation>> = LazyLock::new(|| {
             while let Some(op) = rx.recv().await {
                 match op {
                     Operation::PutFile(path, data_rx, ans_tx) => tokio_uring::spawn(async move {
-                        let res = io_uring_put_file(path, data_rx).await;
+                        let res = tokio_uring_put_file(path, data_rx).await;
                         let _ = ans_tx.send(res);
                     }),
                 };
@@ -94,7 +95,10 @@ static IO_URING: LazyLock<mpsc::Sender<Operation>> = LazyLock::new(|| {
     tx
 });
 
-async fn io_uring_put_file(path: PathBuf, mut rx: mpsc::Receiver<Bytes>) -> Result<(), AppError> {
+async fn tokio_uring_put_file(
+    path: PathBuf,
+    mut rx: mpsc::Receiver<Bytes>,
+) -> Result<(), AppError> {
     let file = tokio_uring::fs::File::create(path).await?;
     {
         let mut pos: u64 = 0;
@@ -117,12 +121,12 @@ async fn put_v3(body: Body) -> Result<(), AppError> {
     let path = DST_FILES[2];
 
     let mut stream = body.into_data_stream();
-    let (data_tx, data_rx) = mpsc::channel::<Bytes>(32);
+    let (data_tx, data_rx) = mpsc::channel::<Bytes>(DATA_CHAN_SIZE);
     let (ans_tx, ans_rx) = oneshot::channel::<Result<(), AppError>>();
 
     let op = Operation::PutFile(PathBuf::from(path), data_rx, ans_tx);
 
-    IO_URING.send(op).await?;
+    TOKIO_URING.send(op).await?;
 
     while let Some(bytes) = stream.next().await {
         let bytes = bytes?;
@@ -147,6 +151,7 @@ async fn put_v4(body: Body) -> Result<(), AppError> {
     let mut stream = body.into_data_stream();
     while let Some(bytes) = stream.next().await {
         let bytes = bytes?;
+        // debug!(bytes_len = %(bytes.len()));
         file.write_all(&bytes).await?;
     }
 
@@ -157,13 +162,87 @@ async fn put_v4(body: Body) -> Result<(), AppError> {
     Ok(())
 }
 
-pub const API_PATHS: &[&str] = &["/put/v1", "/put/v2", "/put/v3", "/put/v4"];
+static COMPIO: LazyLock<mpsc::Sender<Operation>> = LazyLock::new(|| {
+    let (tx, mut rx) = mpsc::channel::<Operation>(32);
+
+    std::thread::spawn(move || {
+        compio::runtime::Runtime::new().unwrap().block_on(async {
+            while let Some(op) = rx.recv().await {
+                match op {
+                    Operation::PutFile(path, data_rx, ans_tx) => {
+                        compio::runtime::spawn(async move {
+                            let res = compio_put_file(path, data_rx).await;
+                            let _ = ans_tx.send(res);
+                        })
+                    }
+                }
+                .detach();
+            }
+        });
+    });
+
+    tx
+});
+
+async fn compio_put_file(path: PathBuf, mut rx: mpsc::Receiver<Bytes>) -> Result<(), AppError> {
+    let mut file = compio::fs::File::create(path).await?;
+    {
+        let mut pos: u64 = 0;
+        while let Some(bytes) = rx.recv().await {
+            let buf_len = bytes.len();
+            let compio::BufResult(res, _) = file.write_all_at(bytes, pos).await;
+            res?;
+            pos += buf_len as u64;
+        }
+    }
+    file.sync_all().await?;
+    file.close().await?;
+    Ok(())
+}
+
+#[tracing::instrument(err)]
+async fn put_v5(body: Body) -> Result<(), AppError> {
+    debug!("start");
+
+    let path = DST_FILES[4];
+
+    let mut stream = body.into_data_stream();
+    let (data_tx, data_rx) = mpsc::channel::<Bytes>(DATA_CHAN_SIZE);
+    let (ans_tx, ans_rx) = oneshot::channel::<Result<(), AppError>>();
+
+    let op = Operation::PutFile(PathBuf::from(path), data_rx, ans_tx);
+
+    COMPIO.send(op).await?;
+
+    while let Some(bytes) = stream.next().await {
+        let bytes = bytes?;
+        data_tx.send(bytes).await?;
+    }
+    drop(data_tx);
+
+    ans_rx.await??;
+
+    debug!("end");
+
+    Ok(())
+}
+
+const DATA_CHAN_SIZE: usize = 64;
+
+pub const API_PATHS: &[&str] = &[
+    "/put/v1", //
+    "/put/v2", //
+    "/put/v3", //
+    "/put/v4", //
+    "/put/v5", //
+];
 
 pub const DST_FILES: &[&str] = &[
     "target/data/put_v1",
     "target/data/put_v2",
     "target/data/put_v3",
     "target/data/put_v4",
+    "target/data/put_v5",
 ];
 
 pub fn router() -> Router {
@@ -172,4 +251,5 @@ pub fn router() -> Router {
         .route(API_PATHS[1], put(put_v2))
         .route(API_PATHS[2], put(put_v3))
         .route(API_PATHS[3], put(put_v4))
+        .route(API_PATHS[4], put(put_v5))
 }
