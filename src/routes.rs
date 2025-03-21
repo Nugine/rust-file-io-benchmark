@@ -33,7 +33,7 @@ macro_rules! function_name {
 }
 
 #[tracing::instrument(err)]
-async fn put_std_fs_stream(body: Body) -> Result<(), AppError> {
+async fn put_std_fs_write(body: Body) -> Result<(), AppError> {
     debug!("start");
 
     let path = format!("{DATA_DIR}/{}", function_name!());
@@ -45,6 +45,49 @@ async fn put_std_fs_stream(body: Body) -> Result<(), AppError> {
         let mut file = std::fs::File::create(path)?;
         while let Some(bytes) = rx.blocking_recv() {
             file.write_all(&bytes)?;
+        }
+        file.sync_all()?;
+        debug!("fs end");
+        Ok::<_, std::io::Error>(())
+    });
+
+    let mut stream = body.into_data_stream();
+    while let Some(bytes) = stream.next().await {
+        let bytes = bytes?;
+        tx.send(bytes).await?;
+    }
+    drop(tx);
+
+    task.await??;
+
+    debug!("end");
+
+    Ok(())
+}
+
+#[tracing::instrument(err)]
+async fn put_std_fs_writev(body: Body) -> Result<(), AppError> {
+    debug!("start");
+
+    let path = format!("{DATA_DIR}/{}", function_name!());
+
+    let (tx, mut rx) = mpsc::channel::<Bytes>(DATA_CHAN_SIZE);
+
+    let task = tokio::task::spawn_blocking(move || {
+        debug!("fs start");
+        let mut file = std::fs::File::create(path)?;
+        let mut vec = Vec::with_capacity(DATA_CHAN_SIZE);
+        while let Some(bytes) = rx.blocking_recv() {
+            vec.clear();
+            vec.push(bytes);
+            while let Ok(bytes) = rx.try_recv() {
+                vec.push(bytes);
+            }
+
+            let mut slices = Vec::with_capacity(DATA_CHAN_SIZE);
+            slices.extend(vec.iter().map(|b| std::io::IoSlice::new(b)));
+
+            file.write_all_vectored(&mut slices)?;
         }
         file.sync_all()?;
         debug!("fs end");
@@ -358,7 +401,8 @@ const DATA_CHAN_SIZE: usize = 64;
 pub const DATA_DIR: &str = "./target/data";
 
 pub const API_PATHS: &[&str] = &[
-    concat!("/", stringify!(put_std_fs_stream)),
+    concat!("/", stringify!(put_std_fs_write)),
+    concat!("/", stringify!(put_std_fs_writev)),
     concat!("/", stringify!(put_tokio_fs_iocopy)),
     concat!("/", stringify!(put_tokio_fs_stream)),
     concat!("/", stringify!(put_tokio_uring_all_seq)),
@@ -369,11 +413,12 @@ pub const API_PATHS: &[&str] = &[
 
 pub fn router() -> Router {
     Router::new()
-        .route(API_PATHS[0], put(put_std_fs_stream))
-        .route(API_PATHS[1], put(put_tokio_fs_iocopy))
-        .route(API_PATHS[2], put(put_tokio_fs_stream))
-        .route(API_PATHS[3], put(put_tokio_uring_all_seq))
-        .route(API_PATHS[4], put(put_tokio_uring_batch_seq))
-        .route(API_PATHS[5], put(put_compio_all_seq))
-        .route(API_PATHS[6], put(put_compio_batch_seq))
+        .route(API_PATHS[0], put(put_std_fs_write))
+        .route(API_PATHS[1], put(put_std_fs_writev))
+        .route(API_PATHS[2], put(put_tokio_fs_iocopy))
+        .route(API_PATHS[3], put(put_tokio_fs_stream))
+        .route(API_PATHS[4], put(put_tokio_uring_all_seq))
+        .route(API_PATHS[5], put(put_tokio_uring_batch_seq))
+        .route(API_PATHS[6], put(put_compio_all_seq))
+        .route(API_PATHS[7], put(put_compio_batch_seq))
 }

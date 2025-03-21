@@ -1,3 +1,5 @@
+#![feature(write_all_vectored)]
+
 pub mod error;
 pub mod routes;
 

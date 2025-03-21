@@ -6,6 +6,12 @@ Goal: Highest transmission speed.
 
 ## Run benchmark
 
+Use nightly toolchain
+
+```bash
+rustup override set nightly
+```
+
 Create a 1GiB file with random data.
 
 ```bash
