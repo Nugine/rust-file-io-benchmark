@@ -12,7 +12,6 @@ async fn main() -> anyhow::Result<()> {
     let file_length = std::fs::metadata(&file_path)?.len();
 
     let api_paths = rust_upload_file_benchmark::routes::API_PATHS;
-    let dst_files = rust_upload_file_benchmark::routes::DST_FILES;
 
     let client = reqwest::Client::new();
 
@@ -36,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
             let duration = t1 - t0;
             let speed = file_length as f64 / (1024.0 * 1024.0) / duration.as_secs_f64(); // wall time
             println!(
-                "{}: {:.6}s, {:>12.6} MiB/s",
+                "{:<30}: {:.6}s, {:>12.6} MiB/s",
                 api,
                 duration.as_secs_f64(),
                 speed
@@ -50,8 +49,13 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let sample_sha256 = sha256sum(&file_path)?;
-    for dst_file in dst_files {
-        let dst_sha256 = sha256sum(dst_file)?;
+    for api_path in api_paths {
+        let dst_file = format!(
+            "{}{}",
+            rust_upload_file_benchmark::routes::DATA_DIR,
+            api_path
+        );
+        let dst_sha256 = sha256sum(&dst_file)?;
         if sample_sha256 != dst_sha256 {
             println!("sha256 mismatch: {} != {}", dst_sha256, sample_sha256);
         }

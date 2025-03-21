@@ -16,12 +16,12 @@ impl IntoResponse for AppError {
 
 impl<E> From<E> for AppError
 where
-    E: Into<anyhow::Error>,
+    E: Into<anyhow::Error> + fmt::Debug,
 {
     #[track_caller]
-    fn from(err: E) -> Self {
-        debug!(location=?Location::caller());
-        Self(err.into())
+    fn from(error: E) -> Self {
+        debug!(location=?Location::caller(), ?error);
+        Self(error.into())
     }
 }
 
