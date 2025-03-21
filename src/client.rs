@@ -1,0 +1,77 @@
+use std::ops::Not;
+use std::process::Stdio;
+
+use tokio_util::codec::BytesCodec;
+use tokio_util::codec::FramedRead;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let base_url = "http://localhost:8080";
+
+    let file_path = std::env::args().nth(1).expect("expected a path to a file");
+    let file_length = std::fs::metadata(&file_path)?.len();
+
+    let api_paths = ["/put/v1", "/put/v2", "/put/v3"];
+
+    let client = reqwest::Client::new();
+
+    let max_rounds = 3;
+    for round in 1..=max_rounds {
+        println!("round {round}:");
+        for &api in &api_paths {
+            let file = tokio::fs::File::open(&file_path).await?;
+            let body = reqwest::Body::wrap_stream(FramedRead::new(file, BytesCodec::new()));
+
+            let t0 = std::time::Instant::now();
+
+            let resp = client
+                .put(format!("{base_url}{api}"))
+                .body(body)
+                .send()
+                .await?;
+
+            let t1 = std::time::Instant::now();
+
+            let duration = t1 - t0;
+            let speed = file_length as f64 / (1024.0 * 1024.0) / duration.as_secs_f64(); // wall time
+            println!(
+                "{}: {:.6}s, {:>12.6} MiB/s",
+                api,
+                duration.as_secs_f64(),
+                speed
+            );
+            if resp.status().is_success().not() {
+                println!("{:?}", resp);
+                println!("{:?}", resp.text().await)
+            }
+        }
+        println!("--------");
+    }
+
+    let dst_files = [
+        "target/data/put_v1",
+        "target/data/put_v2",
+        "target/data/put_v3",
+    ];
+
+    let sample_sha256 = sha256sum(&file_path)?;
+    for dst_file in dst_files {
+        let dst_sha256 = sha256sum(dst_file)?;
+        if sample_sha256 != dst_sha256 {
+            println!("sha256 mismatch: {} != {}", dst_sha256, sample_sha256);
+        }
+    }
+    println!("all sha256 match");
+
+    Ok(())
+}
+
+fn sha256sum(path: &str) -> anyhow::Result<String> {
+    let output = std::process::Command::new("sha256sum")
+        .arg(path)
+        .stdout(Stdio::piped())
+        .output()?;
+
+    let line = String::from_utf8(output.stdout)?;
+    Ok(line.split_once(' ').unwrap().0.to_owned())
+}
