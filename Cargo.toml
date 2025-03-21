@@ -23,3 +23,6 @@ tokio-uring = { version = "0.5.0", features = ["bytes"] }
 tokio-util = { version = "0.7.14", features = ["io"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "time"] }
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = "0.6.0"
