@@ -10,7 +10,6 @@ use axum::routing::put;
 use bytes::Bytes;
 use futures::StreamExt;
 use futures::TryStreamExt;
-use futures::stream::FuturesUnordered;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio_util::io::StreamReader;
@@ -104,16 +103,12 @@ static IO_URING: LazyLock<mpsc::Sender<Operation>> = LazyLock::new(|| {
 async fn io_uring_put_file(path: PathBuf, mut rx: mpsc::Receiver<Bytes>) -> Result<(), AppError> {
     let file = tokio_uring::fs::File::create(path).await?;
     {
-        let mut futures = FuturesUnordered::new();
         let mut pos: u64 = 0;
         while let Some(bytes) = rx.recv().await {
-            let file = &file;
             let buf_len = bytes.len();
-            futures.push(async move { file.write_all_at(bytes, pos).await });
-            pos += buf_len as u64;
-        }
-        while let Some((res, _)) = futures.next().await {
+            let (res, _) = file.write_all_at(bytes, pos).await;
             res?;
+            pos += buf_len as u64;
         }
     }
     file.sync_all().await?;
