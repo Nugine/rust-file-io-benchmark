@@ -1,8 +1,8 @@
+use crate::error::AppError;
+
 use std::io::Write as _;
 use std::path::PathBuf;
 use std::sync::LazyLock;
-
-use crate::error::AppError;
 
 use axum::Router;
 use axum::body::Body;
@@ -20,7 +20,7 @@ use tracing::debug;
 async fn put_v1(body: Body) -> Result<(), AppError> {
     debug!("start");
 
-    let path = "target/data/put_v1";
+    let path = DST_FILES[0];
     let mut file = tokio::fs::File::create(path).await?;
 
     let mut data = StreamReader::new(body.into_data_stream().map_err(std::io::Error::other));
@@ -37,7 +37,7 @@ async fn put_v1(body: Body) -> Result<(), AppError> {
 async fn put_v2(body: Body) -> Result<(), AppError> {
     debug!("start");
 
-    let path = "target/data/put_v2";
+    let path = DST_FILES[1];
 
     let (tx, mut rx) = mpsc::channel::<Bytes>(32);
 
@@ -114,7 +114,7 @@ async fn io_uring_put_file(path: PathBuf, mut rx: mpsc::Receiver<Bytes>) -> Resu
 async fn put_v3(body: Body) -> Result<(), AppError> {
     debug!("start");
 
-    let path = "target/data/put_v3";
+    let path = DST_FILES[2];
 
     let mut stream = body.into_data_stream();
     let (data_tx, data_rx) = mpsc::channel::<Bytes>(32);
@@ -141,7 +141,7 @@ async fn put_v3(body: Body) -> Result<(), AppError> {
 async fn put_v4(body: Body) -> Result<(), AppError> {
     debug!("start");
 
-    let path = "target/data/put_v4";
+    let path = DST_FILES[3];
     let mut file = tokio::fs::File::create(path).await?;
 
     let mut stream = body.into_data_stream();
@@ -157,14 +157,6 @@ async fn put_v4(body: Body) -> Result<(), AppError> {
     Ok(())
 }
 
-pub fn router() -> Router {
-    Router::new()
-        .route("/put/v1", put(put_v1))
-        .route("/put/v2", put(put_v2))
-        .route("/put/v3", put(put_v3))
-        .route("/put/v4", put(put_v4))
-}
-
 pub const API_PATHS: &[&str] = &["/put/v1", "/put/v2", "/put/v3", "/put/v4"];
 
 pub const DST_FILES: &[&str] = &[
@@ -173,3 +165,11 @@ pub const DST_FILES: &[&str] = &[
     "target/data/put_v3",
     "target/data/put_v4",
 ];
+
+pub fn router() -> Router {
+    Router::new()
+        .route(API_PATHS[0], put(put_v1))
+        .route(API_PATHS[1], put(put_v2))
+        .route(API_PATHS[2], put(put_v3))
+        .route(API_PATHS[3], put(put_v4))
+}
