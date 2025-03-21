@@ -1,28 +1,34 @@
 round 1:
-/put_std_fs_stream            : 1.276306s,   802.315637 MiB/s
-/put_tokio_fs_iocopy          : 1.682645s,   608.565750 MiB/s
-/put_tokio_fs_stream          : 1.690973s,   605.568591 MiB/s
-/put_tokio_uring_all_seq      : 1.372904s,   745.864359 MiB/s
-/put_tokio_uring_batch_seq    : 1.117798s,   916.086561 MiB/s
-/put_compio_all_seq           : 1.241712s,   824.667691 MiB/s
-/put_compio_batch_seq         : 1.258074s,   813.942325 MiB/s
+/put_std_fs_write             : 1.171130s,   874.368938 MiB/s
+/put_std_fs_writev            : 1.200178s,   853.206815 MiB/s
+/put_std_fs_agg               : 1.216482s,   841.771649 MiB/s
+/put_tokio_fs_iocopy          : 1.650673s,   620.352919 MiB/s
+/put_tokio_fs_stream          : 1.737941s,   589.202914 MiB/s
+/put_tokio_uring_all_seq      : 1.400214s,   731.316939 MiB/s
+/put_tokio_uring_batch_seq    : 1.122757s,   912.040889 MiB/s
+/put_compio_all_seq           : 1.202218s,   851.759269 MiB/s
+/put_compio_batch_seq         : 1.212405s,   844.601927 MiB/s
 --------
 round 2:
-/put_std_fs_stream            : 1.089568s,   939.822305 MiB/s
-/put_tokio_fs_iocopy          : 1.633586s,   626.841768 MiB/s
-/put_tokio_fs_stream          : 1.680991s,   609.164383 MiB/s
-/put_tokio_uring_all_seq      : 1.389175s,   737.127965 MiB/s
-/put_tokio_uring_batch_seq    : 1.115203s,   918.218439 MiB/s
-/put_compio_all_seq           : 1.240682s,   825.352824 MiB/s
-/put_compio_batch_seq         : 1.231629s,   831.419041 MiB/s
+/put_std_fs_write             : 1.105248s,   926.489280 MiB/s
+/put_std_fs_writev            : 1.106632s,   925.330112 MiB/s
+/put_std_fs_agg               : 1.115574s,   917.912700 MiB/s
+/put_tokio_fs_iocopy          : 1.660833s,   616.558064 MiB/s
+/put_tokio_fs_stream          : 1.719239s,   595.612492 MiB/s
+/put_tokio_uring_all_seq      : 1.379147s,   742.488161 MiB/s
+/put_tokio_uring_batch_seq    : 1.157049s,   885.009734 MiB/s
+/put_compio_all_seq           : 1.270057s,   806.263288 MiB/s
+/put_compio_batch_seq         : 1.230942s,   831.883074 MiB/s
 --------
 round 3:
-/put_std_fs_stream            : 1.159127s,   883.423193 MiB/s
-/put_tokio_fs_iocopy          : 1.717955s,   596.057470 MiB/s
-/put_tokio_fs_stream          : 1.697795s,   603.135261 MiB/s
-/put_tokio_uring_all_seq      : 1.392568s,   735.332289 MiB/s
-/put_tokio_uring_batch_seq    : 1.067305s,   959.425657 MiB/s
-/put_compio_all_seq           : 1.245004s,   822.487153 MiB/s
-/put_compio_batch_seq         : 1.277824s,   801.362404 MiB/s
+/put_std_fs_write             : 1.135285s,   901.975847 MiB/s
+/put_std_fs_writev            : 1.195694s,   856.406712 MiB/s
+/put_std_fs_agg               : 1.171804s,   873.866583 MiB/s
+/put_tokio_fs_iocopy          : 1.734192s,   590.476747 MiB/s
+/put_tokio_fs_stream          : 1.668407s,   613.759289 MiB/s
+/put_tokio_uring_all_seq      : 1.324851s,   772.916967 MiB/s
+/put_tokio_uring_batch_seq    : 1.195680s,   856.416642 MiB/s
+/put_compio_all_seq           : 1.260706s,   812.243154 MiB/s
+/put_compio_batch_seq         : 1.257727s,   814.167287 MiB/s
 --------
 all sha256 match
