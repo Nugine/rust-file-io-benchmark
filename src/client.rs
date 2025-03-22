@@ -25,7 +25,11 @@ async fn main() -> anyhow::Result<()> {
         api_paths.shuffle(&mut rand::rng());
         for &api in &api_paths {
             let file = tokio::fs::File::open(&file_path).await?;
-            let body = reqwest::Body::wrap_stream(FramedRead::new(file, BytesCodec::new()));
+            let body = reqwest::Body::wrap_stream(FramedRead::with_capacity(
+                file,
+                BytesCodec::new(),
+                128 * 1024,
+            ));
 
             let t0 = std::time::Instant::now();
 
