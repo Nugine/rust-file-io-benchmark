@@ -1,6 +1,8 @@
 use std::ops::Not;
 use std::process::Stdio;
 
+use axum::http::HeaderValue;
+use reqwest::header::CONTENT_LENGTH;
 use tokio_util::codec::BytesCodec;
 use tokio_util::codec::FramedRead;
 
@@ -27,6 +29,7 @@ async fn main() -> anyhow::Result<()> {
 
             let resp = client
                 .put(format!("{base_url}{api}"))
+                .header(CONTENT_LENGTH, HeaderValue::from(file_length))
                 .body(body)
                 .send()
                 .await?;

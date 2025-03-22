@@ -5,8 +5,10 @@ use std::ops::Not as _;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
+use anyhow::anyhow;
 use axum::Router;
 use axum::body::Body;
+use axum::extract::Request;
 use axum::routing::put;
 use bytes::BufMut as _;
 use bytes::Bytes;
@@ -14,6 +16,7 @@ use bytes::BytesMut;
 use compio::io::AsyncWriteAtExt as _;
 use futures::StreamExt;
 use futures::TryStreamExt;
+use reqwest::header::CONTENT_LENGTH;
 use tokio::io::AsyncWriteExt as _;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
@@ -51,7 +54,7 @@ async fn put_std_fs_write(body: Body) -> Result<(), AppError> {
         }
         file.sync_all()?;
         debug!("fs end");
-        Ok::<_, std::io::Error>(())
+        Ok::<_, AppError>(())
     });
 
     let mut stream = body.into_data_stream();
@@ -94,7 +97,7 @@ async fn put_std_fs_writev(body: Body) -> Result<(), AppError> {
         }
         file.sync_all()?;
         debug!("fs end");
-        Ok::<_, std::io::Error>(())
+        Ok::<_, AppError>(())
     });
 
     let mut stream = body.into_data_stream();
@@ -139,7 +142,7 @@ async fn put_std_fs_agg(body: Body) -> Result<(), AppError> {
         }
         file.sync_all()?;
         debug!("fs end");
-        Ok::<_, std::io::Error>(())
+        Ok::<_, AppError>(())
     });
 
     let mut stream = body.into_data_stream();
@@ -444,21 +447,80 @@ async fn put_compio_batch_seq(body: Body) -> Result<(), AppError> {
     Ok(())
 }
 
+#[tracing::instrument(err)]
+async fn put_mmap(req: Request) -> Result<(), AppError> {
+    debug!("start");
+
+    let content_length = req
+        .headers()
+        .get(CONTENT_LENGTH)
+        .ok_or_else(|| AppError::from(anyhow!("missing content-length")))?
+        .to_str()?
+        .parse::<u64>()?;
+
+    let path = format!("{DATA_DIR}/{}", function_name!());
+
+    let (tx, mut rx) = mpsc::channel::<Bytes>(DATA_CHAN_SIZE);
+
+    let task = tokio::task::spawn_blocking(move || {
+        debug!("fs start");
+
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&path)?;
+
+        file.set_len(content_length)?;
+
+        let mut mmap = unsafe { memmap2::MmapMut::map_mut(&file)? };
+        let mut pos = 0;
+        while let Some(bytes) = rx.blocking_recv() {
+            unsafe {
+                let len = bytes.len();
+                let src = bytes.as_ptr();
+                let dst = mmap.as_mut_ptr().add(pos);
+                std::ptr::copy_nonoverlapping(src, dst, len);
+            }
+            pos += bytes.len();
+        }
+
+        mmap.flush()?;
+        debug!("fs end");
+        Ok::<_, AppError>(())
+    });
+
+    let mut stream = req.into_body().into_data_stream();
+    while let Some(bytes) = stream.next().await {
+        let bytes = bytes?;
+        tx.send(bytes).await?;
+    }
+    drop(tx);
+
+    task.await??;
+
+    debug!("end");
+
+    Ok(())
+}
+
 const DATA_CHAN_SIZE: usize = 64;
 const AGGREGATION_SIZE: usize = 1024 * 1024;
 
 pub const DATA_DIR: &str = "./target/data";
 
 pub const API_PATHS: &[&str] = &[
-    concat!("/", stringify!(put_std_fs_write)),
-    concat!("/", stringify!(put_std_fs_writev)),
-    concat!("/", stringify!(put_std_fs_agg)),
-    concat!("/", stringify!(put_tokio_fs_iocopy)),
-    concat!("/", stringify!(put_tokio_fs_stream)),
-    concat!("/", stringify!(put_tokio_uring_all_seq)),
-    concat!("/", stringify!(put_tokio_uring_batch_seq)),
-    concat!("/", stringify!(put_compio_all_seq)),
-    concat!("/", stringify!(put_compio_batch_seq)),
+    "/put_std_fs_write",
+    "/put_std_fs_writev",
+    "/put_std_fs_agg",
+    "/put_tokio_fs_iocopy",
+    "/put_tokio_fs_stream",
+    "/put_tokio_uring_all_seq",
+    "/put_tokio_uring_batch_seq",
+    "/put_compio_all_seq",
+    "/put_compio_batch_seq",
+    "/put_mmap",
 ];
 
 pub fn router() -> Router {
@@ -472,4 +534,5 @@ pub fn router() -> Router {
         .route(API_PATHS[6], put(put_tokio_uring_batch_seq))
         .route(API_PATHS[7], put(put_compio_all_seq))
         .route(API_PATHS[8], put(put_compio_batch_seq))
+        .route(API_PATHS[9], put(put_mmap))
 }
