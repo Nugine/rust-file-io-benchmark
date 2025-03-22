@@ -510,7 +510,7 @@ async fn put_mmap(req: Request) -> Result<(), AppError> {
 const DATA_CHAN_SIZE: usize = 64;
 const AGGREGATION_SIZE: usize = 1024 * 1024;
 
-pub const DATA_DIR: &str = "./target/data";
+pub const DATA_DIR: &str = "./data";
 
 pub const API_PATHS: &[&str] = &[
     "/put_std_fs_write",
