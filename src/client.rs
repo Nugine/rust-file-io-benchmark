@@ -2,6 +2,7 @@ use std::ops::Not;
 use std::process::Stdio;
 
 use axum::http::HeaderValue;
+use rand::seq::SliceRandom as _;
 use reqwest::header::CONTENT_LENGTH;
 use tokio_util::codec::BytesCodec;
 use tokio_util::codec::FramedRead;
@@ -14,14 +15,15 @@ async fn main() -> anyhow::Result<()> {
     let file_length = std::fs::metadata(&file_path)?.len();
     let sample_sha256 = sha256sum(&file_path)?;
 
-    let api_paths = rust_upload_file_benchmark::routes::API_PATHS;
+    let mut api_paths = rust_upload_file_benchmark::routes::API_PATHS.to_owned();
 
     let client = reqwest::Client::new();
 
     let max_rounds = 3;
     for round in 1..=max_rounds {
         println!("round {round}:");
-        for &api in api_paths {
+        api_paths.shuffle(&mut rand::rng());
+        for &api in &api_paths {
             let file = tokio::fs::File::open(&file_path).await?;
             let body = reqwest::Body::wrap_stream(FramedRead::new(file, BytesCodec::new()));
 
