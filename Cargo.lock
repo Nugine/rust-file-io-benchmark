@@ -1625,8 +1625,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-upload-file-benchmark"
-version = "0.1.0"
+name = "rust-file-io-benchmark"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "axum",

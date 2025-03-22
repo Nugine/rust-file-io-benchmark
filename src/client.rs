@@ -15,7 +15,7 @@ async fn main() -> anyhow::Result<()> {
     let file_length = std::fs::metadata(&file_path)?.len();
     let sample_sha256 = sha256sum(&file_path)?;
 
-    let mut api_paths = rust_upload_file_benchmark::routes::API_PATHS.to_owned();
+    let mut api_paths = fio::routes::API_PATHS.to_owned();
 
     let client = reqwest::Client::new();
 
@@ -55,7 +55,7 @@ async fn main() -> anyhow::Result<()> {
                 println!("{:?}", resp.text().await)
             }
 
-            let dst_file = format!("{}{}", rust_upload_file_benchmark::routes::DATA_DIR, api);
+            let dst_file = format!("{}{}", fio::routes::DATA_DIR, api);
             let dst_sha256 = sha256sum(&dst_file)?;
             if sample_sha256 != dst_sha256 {
                 println!("sha256 mismatch: {} != {}", dst_sha256, sample_sha256);

@@ -30,7 +30,7 @@ async fn main() -> anyhow::Result<()> {
 
     setup_tracing();
 
-    let app = rust_upload_file_benchmark::routes::router();
+    let app = fio::routes::router();
 
     let listener = tokio::net::TcpListener::bind((opt.host, opt.port)).await?;
     axum::serve(listener, app).await?;

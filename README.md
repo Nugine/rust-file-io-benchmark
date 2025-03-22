@@ -1,4 +1,4 @@
-# rust-upload-file-benchmark
+# rust-file-io-benchmark
 
 Task: Save a large file to disk from PUT request.
 
