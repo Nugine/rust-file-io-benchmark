@@ -2,6 +2,7 @@ use crate::error::AppError;
 
 use std::io::Write as _;
 use std::ops::Not as _;
+use std::os::unix::fs::OpenOptionsExt as _;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
@@ -470,6 +471,7 @@ async fn put_mmap(req: Request) -> Result<(), AppError> {
             .write(true)
             .create(true)
             .truncate(true)
+            .custom_flags(libc::O_DIRECT)
             .open(&path)?;
 
         file.set_len(content_length)?;

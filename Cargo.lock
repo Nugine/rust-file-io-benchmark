@@ -1634,6 +1634,7 @@ dependencies = [
  "clap",
  "compio",
  "futures",
+ "libc",
  "memmap2",
  "rand",
  "reqwest",
