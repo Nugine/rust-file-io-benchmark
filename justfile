@@ -1,6 +1,10 @@
 dev:
     cargo fmt
-    cargo clippy
+    cargo clippy --all-targets --all-features
+
+ci:
+    cargo fmt --all --check
+    cargo clippy --all-targets --all-features -- -D warnings
 
 server:
     RUST_BACKTRACE=full \
