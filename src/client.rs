@@ -4,8 +4,7 @@ use std::process::Stdio;
 use axum::http::HeaderValue;
 use rand::seq::SliceRandom as _;
 use reqwest::header::CONTENT_LENGTH;
-use tokio_util::codec::BytesCodec;
-use tokio_util::codec::FramedRead;
+use tokio_util::io::ReaderStream;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -22,14 +21,14 @@ async fn main() -> anyhow::Result<()> {
     let max_rounds = 3;
     for round in 1..=max_rounds {
         println!("round {round}:");
+
         api_paths.shuffle(&mut rand::rng());
+
         for &api in &api_paths {
             let file = tokio::fs::File::open(&file_path).await?;
-            let body = reqwest::Body::wrap_stream(FramedRead::with_capacity(
-                file,
-                BytesCodec::new(),
-                128 * 1024,
-            ));
+
+            let block_size = 128 * 1024;
+            let body = reqwest::Body::wrap_stream(ReaderStream::with_capacity(file, block_size));
 
             let t0 = std::time::Instant::now();
 
