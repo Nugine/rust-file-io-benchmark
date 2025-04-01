@@ -16,9 +16,9 @@ path = "src/client.rs"
 
 [dependencies]
 anyhow = { version = "1.0.97", features = ["backtrace"] }
-axum = "0.8.1"
+axum = "0.8.3"
 bytes = "1.10.1"
-clap = { version = "4.5.32", features = ["derive"] }
+clap = { version = "4.5.34", features = ["derive"] }
 compio = { version = "0.14.0", features = ["bytes", "io", "macros"] }
 futures = "0.3.31"
 libc = "0.2.171"
