@@ -15,19 +15,19 @@ name = "client"
 path = "src/client.rs"
 
 [dependencies]
-anyhow = { version = "1.0.97", features = ["backtrace"] }
-axum = "0.8.3"
+anyhow = { version = "1.0.98", features = ["backtrace"] }
+axum = "0.8.4"
 bytes = "1.10.1"
-clap = { version = "4.5.34", features = ["derive"] }
+clap = { version = "4.5.37", features = ["derive"] }
 compio = { version = "0.14.0", features = ["bytes", "io", "macros"] }
 futures = "0.3.31"
-libc = "0.2.171"
+libc = "0.2.172"
 memmap2 = "0.9.5"
-rand = "0.9.0"
+rand = "0.9.1"
 reqwest = { version = "0.12.15", features = ["stream"] }
-tokio = { version = "1.44.1", features = ["full"] }
+tokio = { version = "1.44.2", features = ["full"] }
 tokio-uring = { version = "0.5.0", features = ["bytes"] }
-tokio-util = { version = "0.7.14", features = ["io"] }
+tokio-util = { version = "0.7.15", features = ["io"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "time"] }
 
