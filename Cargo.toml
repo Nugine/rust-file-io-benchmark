@@ -18,18 +18,18 @@ path = "src/client.rs"
 anyhow = { version = "1.0.102", features = ["backtrace"] }
 axum = "0.8.8"
 bytes = "1.11.1"
-clap = { version = "4.5.60", features = ["derive"] }
+clap = { version = "4.6.0", features = ["derive"] }
 compio = { version = "0.18.0", features = ["bytes", "io", "macros"] }
 futures = "0.3.32"
-libc = "0.2.182"
+libc = "0.2.183"
 memmap2 = "0.9.10"
 rand = "0.10.0"
 reqwest = { version = "0.13.2", features = ["stream"] }
-tokio = { version = "1.49.0", features = ["full"] }
+tokio = { version = "1.50.0", features = ["full"] }
 tokio-uring = { version = "0.5.0", features = ["bytes"] }
 tokio-util = { version = "0.7.18", features = ["io"] }
 tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.22", features = ["env-filter", "time"] }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "time"] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 tikv-jemallocator = "0.6.1"
